@@ -505,11 +505,12 @@ body{
   padding:12px 16px;border-bottom:1px solid var(--border);
   font-weight:600;font-size:0.95rem;
 }
-.time-picker__close{
+.time-picker__close,.time-picker__mode{
   width:30px;height:30px;border-radius:50%;border:none;
-  background:transparent;cursor:pointer;font-size:1rem;color:var(--text2);
+  background:transparent;cursor:pointer;font-size:0.9rem;color:var(--text2);
   display:flex;align-items:center;justify-content:center;
 }
+.time-picker__close:hover,.time-picker__mode:hover{background:var(--row-hover)}
 .time-picker__body{display:flex;padding:16px;gap:12px}
 .time-picker__col{flex:1;text-align:center}
 .time-picker__col-label{font-size:0.75rem;color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.05em}
@@ -719,7 +720,10 @@ body{
   <div class="time-picker">
     <div class="time-picker__head">
       <span>⏰ 选择时间</span>
-      <button class="time-picker__close" id="btnTimeClose">✕</button>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button class="time-picker__mode" id="btnTimeMode" title="切换到表盘时钟">🔢</button>
+        <button class="time-picker__close" id="btnTimeClose">✕</button>
+      </div>
     </div>
     <div class="time-picker__body">
       <div class="time-picker__col">
@@ -918,11 +922,13 @@ function renderSchedule() {
 
   // Attach event listeners
   tbody.querySelectorAll('.time-start, .time-end').forEach(input => {
+    const editable = !input.disabled;
+    applyTimeMode(input, editable);
     input.addEventListener('change', () => {
       updateHoursCell(input.dataset.date);
     });
     input.addEventListener('click', () => {
-      if (!input.disabled && input.readOnly) openTimePicker(input);
+      if (!input.disabled && timeMode === 'scroll') openTimePicker(input);
     });
   });
   tbody.querySelectorAll('.btn-save').forEach(btn => {
@@ -1188,7 +1194,27 @@ function renderSavedStats() {
 // ============================================================
 // TIME SCROLL PICKER
 // ============================================================
-let timePickerTarget = null; // which input triggered the picker
+let timePickerTarget = null;
+let timeMode = 'scroll'; // 'scroll' = custom picker, 'native' = system clock dial
+
+function switchTimeMode() {
+  timeMode = timeMode === 'scroll' ? 'native' : 'scroll';
+  document.getElementById('btnTimeMode').textContent = timeMode === 'scroll' ? '🕐' : '🔢';
+  document.getElementById('btnTimeMode').title = timeMode === 'scroll' ? '切换到表盘时钟' : '切换到数字滚动';
+  // Rebuild inputs for current view
+  render();
+}
+
+function applyTimeMode(input, editable) {
+  if (timeMode === 'native') {
+    input.type = 'time';
+    input.readOnly = false;
+    input.step = '300';
+  } else {
+    input.type = 'text';
+    input.readOnly = editable;
+  }
+}
 
 function buildHourScroll(activeVal) {
   const s = document.getElementById('hourScroll');
@@ -1233,34 +1259,34 @@ function selectHour(h) {
   document.querySelectorAll('#hourScroll .time-picker__item').forEach(el => {
     el.classList.toggle('time-picker__item--active', parseInt(el.dataset.val) === h);
   });
-  document.getElementById('hourScroll').querySelector('.time-picker__item--active')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  // No auto scroll - let user scroll freely
 }
 
 function selectMin(m) {
   document.querySelectorAll('#minScroll .time-picker__item').forEach(el => {
     el.classList.toggle('time-picker__item--active', parseInt(el.dataset.val) === m);
   });
-  document.getElementById('minScroll').querySelector('.time-picker__item--active')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  // No auto scroll - let user scroll freely
 }
 
 function openTimePicker(input) {
   timePickerTarget = input;
+  document.getElementById('btnTimeMode').textContent = timeMode === 'scroll' ? '🔢' : '🕐';
   const val = input.value || '08:00';
   const [h, m] = val.split(':');
   buildHourScroll(h);
   buildMinScroll(m);
   document.getElementById('timePickerOverlay').classList.add('time-picker-overlay--open');
 
-  // Scroll detection
+  // Scroll detection: highlight nearest but don't auto-snap
   ['hourScroll','minScroll'].forEach(id => {
     const el = document.getElementById(id);
-    el.onscroll = null;
     let timer;
     el.addEventListener('scroll', () => {
       clearTimeout(timer);
       timer = setTimeout(() => {
         const items = el.querySelectorAll('.time-picker__item');
-        const center = el.scrollTop + el.offsetHeight / 2;
+        const mid = el.scrollTop + el.offsetHeight / 2;
         let closest = null, minDist = Infinity;
         items.forEach(item => {
           const dist = Math.abs(item.offsetTop + item.offsetHeight/2 - el.scrollTop - el.offsetHeight/2);
@@ -1269,10 +1295,8 @@ function openTimePicker(input) {
         if (closest) {
           items.forEach(i => i.classList.remove('time-picker__item--active'));
           closest.classList.add('time-picker__item--active');
-          if (id === 'hourScroll') selectHour(parseInt(closest.dataset.val));
-          else selectMin(parseInt(closest.dataset.val));
         }
-      }, 150);
+      }, 200);
     }, { passive: true });
   });
 }
@@ -1420,6 +1444,7 @@ function init() {
   // Time scroll picker
   document.getElementById('btnTimeClose').addEventListener('click', closeTimePicker);
   document.getElementById('btnTimeConfirm').addEventListener('click', confirmTimePicker);
+  document.getElementById('btnTimeMode').addEventListener('click', switchTimeMode);
   document.getElementById('timePickerOverlay').addEventListener('click', (e) => {
     if (e.target === document.getElementById('timePickerOverlay')) closeTimePicker();
   });
