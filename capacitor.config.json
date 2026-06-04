@@ -1,8 +1,5 @@
 {
   "appId": "com.workhours.stats",
   "appName": "工作时间统计",
-  "webDir": "src",
-  "server": {
-    "androidScheme": "https"
-  }
+  "webDir": "src"
 }
