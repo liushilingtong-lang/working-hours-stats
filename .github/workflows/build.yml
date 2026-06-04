@@ -69,6 +69,23 @@ jobs:
       - name: Sync web assets
         run: npx cap sync android
 
+      - name: Generate Android icons
+        run: |
+          SRC="assets/icon.png"
+          RES="android/app/src/main/res"
+          # Generate launcher icons in all densities
+          for DENSITY in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do
+            NAME="${DENSITY%%:*}" SIZE="${DENSITY##*:}"
+            DIR="$RES/mipmap-$NAME"
+            mkdir -p "$DIR"
+            convert "$SRC" -resize "${SIZE}x${SIZE}" "$DIR/ic_launcher.png"
+            echo "Created mipmap-$NAME ($SIZE x $SIZE)"
+          done
+          # Also create foreground for adaptive icon
+          mkdir -p "$RES/mipmap-anydpi-v26"
+          # Copy highest res as app icon
+          cp "$RES/mipmap-xxxhdpi/ic_launcher.png" "$RES/ic_launcher.png" 2>/dev/null || true
+
       - name: Build APK
         working-directory: android
         run: ./gradlew assembleDebug
