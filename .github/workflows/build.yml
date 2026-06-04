@@ -71,20 +71,19 @@ jobs:
 
       - name: Generate Android icons
         run: |
-          SRC="assets/icon.png"
-          RES="android/app/src/main/res"
-          # Generate launcher icons in all densities
-          for DENSITY in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do
-            NAME="${DENSITY%%:*}" SIZE="${DENSITY##*:}"
-            DIR="$RES/mipmap-$NAME"
-            mkdir -p "$DIR"
-            convert "$SRC" -resize "${SIZE}x${SIZE}" "$DIR/ic_launcher.png"
-            echo "Created mipmap-$NAME ($SIZE x $SIZE)"
-          done
-          # Also create foreground for adaptive icon
-          mkdir -p "$RES/mipmap-anydpi-v26"
-          # Copy highest res as app icon
-          cp "$RES/mipmap-xxxhdpi/ic_launcher.png" "$RES/ic_launcher.png" 2>/dev/null || true
+          python3 -c "
+          from PIL import Image
+          import os
+          src = 'assets/icon.png'
+          res = 'android/app/src/main/res'
+          img = Image.open(src)
+          sizes = {'mdpi':48,'hdpi':72,'xhdpi':96,'xxhdpi':144,'xxxhdpi':192}
+          for name,size in sizes.items():
+              d = f'{res}/mipmap-{name}'
+              os.makedirs(d, exist_ok=True)
+              img.resize((size,size), Image.LANCZOS).save(f'{d}/ic_launcher.png')
+              print(f'Created mipmap-{name} ({size}x{size})')
+          "
 
       - name: Build APK
         working-directory: android
