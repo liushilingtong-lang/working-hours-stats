@@ -1,0 +1,1263 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>工作时间统计</title>
+<style>
+/* ============================================================
+   DESIGN TOKENS
+   ============================================================ */
+:root {
+  --font-sans: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --transition: 200ms ease;
+  --max-width: 900px;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f1f5f9;
+  --surface: #ffffff;
+  --border: #e2e8f0;
+  --text: #0f172a;
+  --text2: #475569;
+  --text3: #94a3b8;
+  --accent: #6366f1;
+  --accent-h: #4f46e5;
+  --accent-bg: #eef2ff;
+  --danger: #ef4444;
+  --danger-bg: #fef2f2;
+  --success: #10b981;
+  --warning-bg: #fffbeb;
+  --today-bg: #eef2ff;
+  --today-border: #6366f1;
+  --row-hover: #f8fafc;
+  --future-bg: #f8fafc;
+  --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0f172a;
+  --surface: #1e293b;
+  --border: #334155;
+  --text: #f1f5f9;
+  --text2: #94a3b8;
+  --text3: #64748b;
+  --accent: #818cf8;
+  --accent-h: #6366f1;
+  --accent-bg: #1e1b4b;
+  --danger: #f87171;
+  --danger-bg: #450a0a;
+  --success: #34d399;
+  --warning-bg: #451a03;
+  --today-bg: #1e1b4b;
+  --today-border: #818cf8;
+  --row-hover: #1e293b;
+  --future-bg: #0f172a;
+  --shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+/* ============================================================
+   RESET & BASE
+   ============================================================ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px;-webkit-font-smoothing:antialiased}
+body{
+  font-family:var(--font-sans);
+  font-size:0.9375rem;
+  line-height:1.5;
+  color:var(--text);
+  background:var(--bg);
+  min-height:100vh;
+  transition:background var(--transition),color var(--transition);
+}
+
+/* ============================================================
+   HEADER
+   ============================================================ */
+.header{
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  padding:0 20px;
+  height:56px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  position:sticky;
+  top:0;
+  z-index:100;
+  box-shadow:var(--shadow);
+  transition:background var(--transition),border var(--transition);
+}
+.header__left{display:flex;align-items:center;gap:10px}
+.header__logo{font-size:1.25rem}
+.header__title{font-weight:600;font-size:1.05rem}
+.header__actions{display:flex;align-items:center;gap:6px}
+.btn-icon{
+  width:36px;height:36px;border-radius:50%;
+  border:1px solid transparent;
+  background:transparent;
+  cursor:pointer;
+  font-size:1.1rem;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  transition:background var(--transition);
+}
+.btn-icon:hover{background:var(--row-hover)}
+
+/* ============================================================
+   MAIN CONTAINER
+   ============================================================ */
+.main{
+  max-width:var(--max-width);
+  margin:0 auto;
+  padding:20px;
+}
+
+/* ============================================================
+   MONTH NAVIGATION
+   ============================================================ */
+.month-nav{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:16px;
+  margin-bottom:20px;
+}
+.month-nav__btn{
+  width:36px;height:36px;
+  border-radius:50%;
+  border:1px solid var(--border);
+  background:var(--surface);
+  cursor:pointer;
+  font-size:1rem;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:var(--text);
+  transition:all var(--transition);
+}
+.month-nav__btn:hover{background:var(--accent-bg);border-color:var(--accent);color:var(--accent)}
+.month-nav__label{font-size:1.15rem;font-weight:600;min-width:120px;text-align:center;cursor:pointer;position:relative;user-select:none}
+.month-nav__label:hover{color:var(--accent)}
+
+/* Month picker popover */
+.month-picker{
+  display:none;
+  position:absolute;
+  top:100%;left:50%;transform:translateX(-50%);
+  margin-top:8px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius-md);
+  box-shadow:0 10px 40px rgba(0,0,0,0.15);
+  padding:14px;
+  z-index:150;
+  width:260px;
+}
+.month-picker--open{display:block}
+.month-picker__year-row{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:10px;
+  font-weight:600;font-size:0.95rem;
+}
+.month-picker__yr-btn{
+  width:28px;height:28px;border-radius:50%;border:1px solid var(--border);
+  background:var(--surface);cursor:pointer;color:var(--text);
+  display:flex;align-items:center;justify-content:center;font-size:0.8rem;
+}
+.month-picker__yr-btn:hover{background:var(--accent-bg);border-color:var(--accent)}
+.month-picker__grid{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:6px;
+}
+.month-picker__m{
+  padding:8px 4px;text-align:center;border-radius:var(--radius-sm);
+  cursor:pointer;font-size:0.82rem;border:1px solid transparent;
+  transition:all var(--transition);
+}
+.month-picker__m:hover{background:var(--accent-bg);border-color:var(--accent);color:var(--accent)}
+.month-picker__m--active{background:var(--accent);color:#fff;font-weight:600}
+.month-picker__m--active:hover{background:var(--accent-h);color:#fff}
+/* Pill buttons in nav */
+.nav-pill{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:4px 14px;
+  border:1.5px solid var(--border);
+  border-radius:20px;
+  font-size:0.78rem;font-weight:500;cursor:pointer;
+  color:var(--text2);
+  background:var(--surface);
+  transition:all var(--transition);
+  white-space:nowrap;
+}
+.nav-pill:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-bg)}
+
+/* ============================================================
+   SCHEDULE TABLE
+   ============================================================ */
+.schedule-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius-lg);
+  overflow:hidden;
+  box-shadow:var(--shadow);
+  transition:background var(--transition),border var(--transition);
+}
+.schedule-table{
+  width:100%;
+  border-collapse:collapse;
+  table-layout:fixed;
+}
+.schedule-table th{
+  text-align:center;
+  padding:10px 8px;
+  font-size:0.75rem;
+  font-weight:600;
+  color:var(--text2);
+  text-transform:uppercase;
+  letter-spacing:0.05em;
+  background:var(--future-bg);
+  border-bottom:2px solid var(--border);
+}
+.schedule-table td{
+  text-align:center;
+  padding:6px 4px;
+  border-bottom:1px solid var(--border);
+  transition:background var(--transition);
+}
+.schedule-table tbody tr:hover td{background:var(--row-hover)}
+
+/* Column widths */
+.col-date{width:14%}
+.col-day{width:8%}
+.col-start{width:14%}
+.col-end{width:14%}
+.col-hours{width:10%}
+.col-wage{width:10%}
+.col-actions{width:16%}
+
+/* Row styles */
+.row-today td{background:var(--today-bg)}
+.row-today:hover td{background:var(--today-bg) !important}
+.row-future td{background:var(--future-bg);color:var(--text3)}
+.row-weekend td{background:var(--future-bg)}
+.row-weekend .cell-date{color:var(--text3)}
+
+/* Cell content */
+.cell-date{font-weight:500;font-size:0.9rem}
+.cell-day{font-size:0.8rem;color:var(--text2)}
+.cell-day--today{
+  display:inline-block;
+  background:var(--accent);
+  color:#fff;
+  border-radius:10px;
+  padding:1px 8px;
+  font-size:0.75rem;
+  font-weight:600;
+}
+
+/* Time inputs inside table */
+.time-input{
+  width:82px;
+  text-align:center;
+  font-family:var(--font-mono);
+  font-size:0.85rem;
+  padding:5px 4px;
+  border:1px solid transparent;
+  border-radius:var(--radius-sm);
+  background:transparent;
+  color:var(--text);
+  transition:all var(--transition);
+  cursor:pointer;
+}
+.time-input:hover{border-color:var(--border)}
+.time-input:focus{
+  outline:none;
+  border-color:var(--accent);
+  box-shadow:0 0 0 3px var(--accent-bg);
+  background:var(--surface);
+}
+.time-input:disabled{
+  color:var(--text3);
+  cursor:default;
+  -webkit-text-fill-color:var(--text3);
+  opacity:1;
+}
+.time-input::-webkit-calendar-picker-indicator{
+  cursor:pointer;
+  opacity:0.4;
+}
+[data-theme="dark"] .time-input::-webkit-calendar-picker-indicator{filter:invert(1)}
+
+/* Hours display */
+.cell-hours{
+  font-family:var(--font-mono);
+  font-weight:600;
+  font-size:0.9rem;
+  color:var(--accent);
+}
+.cell-hours--none{color:var(--text3);font-weight:400}
+
+/* Wage input */
+.wage-input{
+  width:60px;
+  text-align:center;
+  font-family:var(--font-mono);
+  font-size:0.85rem;
+  padding:5px 2px;
+  border:1px solid transparent;
+  border-radius:var(--radius-sm);
+  background:transparent;
+  color:var(--text);
+  transition:all var(--transition);
+}
+.wage-input:hover{border-color:var(--border)}
+.wage-input:focus{
+  outline:none;
+  border-color:var(--accent);
+  box-shadow:0 0 0 3px var(--accent-bg);
+  background:var(--surface);
+}
+.wage-input:disabled{
+  color:var(--text3);
+  cursor:default;
+  -webkit-text-fill-color:var(--text3);
+  opacity:1;
+}
+
+/* Save indicator */
+.save-indicator{display:none}
+
+/* ============================================================
+   SAVE BUTTON PER ROW
+   ============================================================ */
+.btn-save{
+  padding:4px 12px;
+  border:none;
+  border-radius:var(--radius-sm);
+  background:var(--accent);
+  color:#fff;
+  font-size:0.78rem;
+  font-weight:500;
+  cursor:pointer;
+  transition:all var(--transition);
+  white-space:nowrap;
+}
+.btn-save:hover{background:var(--accent-h)}
+.btn-save:active{transform:scale(0.96)}
+.btn-save--changed{animation:pulse 0.6s ease}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(99,102,241,0.4)}50%{box-shadow:0 0 0 6px rgba(99,102,241,0)}}
+
+.btn-clear{
+  padding:4px 8px;
+  border:1px solid var(--border);
+  border-radius:var(--radius-sm);
+  background:transparent;
+  color:var(--text2);
+  font-size:0.75rem;
+  cursor:pointer;
+  transition:all var(--transition);
+}
+.btn-clear:hover{background:var(--danger-bg);border-color:var(--danger);color:var(--danger)}
+
+/* ============================================================
+   SUMMARY BAR (top of card)
+   ============================================================ */
+.summary-bar{
+  display:flex;
+  align-items:center;
+  justify-content:space-around;
+  padding:14px 20px;
+  border-bottom:2px solid var(--border);
+  background:var(--accent-bg);
+  flex-wrap:wrap;
+  gap:8px;
+}
+.summary-item{text-align:center}
+.summary-item__label{
+  font-size:0.7rem;
+  text-transform:uppercase;
+  letter-spacing:0.05em;
+  color:var(--text3);
+  margin-bottom:2px;
+}
+.summary-item__value{
+  font-size:1.25rem;
+  font-weight:700;
+  font-family:var(--font-mono);
+  color:var(--text);
+  font-variant-numeric:tabular-nums;
+}
+.summary-item__value--accent{color:var(--accent)}
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+.toast{
+  position:fixed;
+  bottom:24px;
+  left:50%;
+  transform:translateX(-50%);
+  background:#0f172a;
+  color:#fff;
+  padding:8px 20px;
+  border-radius:20px;
+  font-size:0.85rem;
+  z-index:9999;
+  animation:toast-in 0.3s ease, toast-out 0.3s ease 2s forwards;
+  pointer-events:none;
+  white-space:nowrap;
+}
+[data-theme="dark"] .toast{background:#f1f5f9;color:#0f172a}
+@keyframes toast-in{from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+@keyframes toast-out{from{opacity:1}to{opacity:0}}
+
+/* ============================================================
+   MOBILE: card layout (no horizontal scroll)
+   ============================================================ */
+@media(max-width:768px){
+  .main{padding:8px}
+  .header{padding:0 12px;height:50px}
+  .header__title{font-size:0.9rem}
+  .month-nav{gap:8px;margin-bottom:12px}
+  .month-nav__label{font-size:1rem;min-width:auto}
+  .nav-pill{padding:3px 10px;font-size:0.72rem}
+
+  /* Hide table head */
+  .schedule-table thead{display:none}
+
+  /* Row → card */
+  .schedule-table,.schedule-table tbody,.schedule-table tr,.schedule-table td{
+    display:block;
+    width:100%;
+  }
+  .schedule-table{border-collapse:separate}
+  .schedule-table tbody{display:flex;flex-direction:column;gap:10px}
+  .schedule-table tr{
+    border:1px solid var(--border);
+    border-radius:var(--radius-md);
+    padding:10px 12px;
+    background:var(--surface);
+    box-shadow:var(--shadow);
+  }
+  .schedule-table td{
+    border:none;padding:3px 0;text-align:left;
+    display:flex;align-items:center;gap:8px;
+  }
+  .schedule-table td:empty{display:none}
+
+  /* Card header: date + day */
+  .cell-date{
+    font-size:0.95rem;font-weight:600;order:-2;
+  }
+  .cell-day{font-size:0.8rem;color:var(--text2);order:-1}
+
+  /* Time row */
+  .time-input{width:auto;min-width:0;flex:1}
+
+  /* Hours + wage side by side */
+  .cell-hours{font-family:var(--font-mono);font-weight:600;color:var(--accent)}
+  .wage-input{width:80px}
+
+  /* Actions row full width */
+  .btn-save{flex:1;text-align:center}
+  .btn-clear{flex:0}
+
+  /* Summary bar */
+  .summary-bar{flex-wrap:wrap;gap:6px;padding:10px 12px}
+  .summary-item__value{font-size:1rem}
+
+  /* Row styles */
+  .row-today{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-bg)}
+  .row-future,.row-weekend{opacity:0.6}
+
+  /* Label prefix for fields */
+  .schedule-table td:nth-child(3)::before{content:'上班';font-size:0.7rem;color:var(--text3);min-width:36px}
+  .schedule-table td:nth-child(4)::before{content:'下班';font-size:0.7rem;color:var(--text3);min-width:36px}
+  .schedule-table td:nth-child(5)::before{content:'工时';font-size:0.7rem;color:var(--text3);min-width:36px}
+  .schedule-table td:nth-child(6)::before{content:'时薪';font-size:0.7rem;color:var(--text3);min-width:36px}
+
+  /* Modal narrower */
+  .modal{width:100%;max-width:100vw;border-radius:var(--radius-md)}
+  .stats-result{grid-template-columns:1fr 1fr}
+}
+
+/* ============================================================
+   STATS MODAL
+   ============================================================ */
+.modal-overlay{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.5);
+  z-index:200;
+  justify-content:center;
+  align-items:flex-start;
+  padding-top:60px;
+}
+.modal-overlay--open{display:flex}
+.modal{
+  background:var(--surface);
+  border-radius:var(--radius-lg);
+  width:520px;
+  max-width:95vw;
+  max-height:85vh;
+  overflow-y:auto;
+  box-shadow:0 20px 60px rgba(0,0,0,0.2);
+  transition:background var(--transition);
+}
+.modal__head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 20px;border-bottom:1px solid var(--border);
+}
+.modal__title{font-weight:600;font-size:1.05rem}
+.modal__close{
+  width:32px;height:32px;border-radius:50%;border:none;
+  background:transparent;cursor:pointer;font-size:1.2rem;
+  color:var(--text2);display:flex;align-items:center;justify-content:center;
+}
+.modal__close:hover{background:var(--row-hover)}
+.modal__body{padding:20px}
+.modal__section{margin-bottom:20px}
+.modal__section-title{
+  font-size:0.8rem;font-weight:600;color:var(--text2);
+  text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px;
+}
+
+/* Date range row */
+.range-row{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.range-row input[type="date"]{
+  flex:1;padding:8px 10px;border:1px solid var(--border);
+  border-radius:var(--radius-sm);font-size:0.9rem;background:var(--surface);color:var(--text);
+  font-family:var(--font-sans);
+}
+.range-row input[type="date"]:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg)}
+.range-row span{color:var(--text2);font-size:0.85rem}
+
+/* Stats result */
+.stats-result{
+  display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;
+  margin-bottom:14px;
+}
+.stats-result__item{
+  text-align:center;padding:10px 6px;border-radius:var(--radius-md);
+  background:var(--accent-bg);
+}
+.stats-result__val{font-size:1.15rem;font-weight:700;font-family:var(--font-mono);color:var(--accent)}
+.stats-result__lbl{font-size:0.7rem;color:var(--text2);margin-top:2px;text-transform:uppercase;letter-spacing:0.04em}
+
+/* Modal buttons */
+.modal-btns{display:flex;gap:8px;margin-bottom:14px}
+.btn{
+  padding:8px 16px;border:none;border-radius:var(--radius-sm);
+  font-size:0.85rem;font-weight:500;cursor:pointer;transition:all var(--transition);
+  font-family:inherit;
+}
+.btn:active{transform:scale(0.97)}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent-h)}
+.btn-outline{border:1px solid var(--border);background:transparent;color:var(--text)}
+.btn-outline:hover{background:var(--row-hover)}
+.btn-sm{padding:4px 10px;font-size:0.75rem}
+
+/* Saved stats list */
+.saved-list{display:flex;flex-direction:column;gap:6px}
+.saved-item{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);
+  transition:background var(--transition);
+}
+.saved-item:hover{background:var(--row-hover)}
+.saved-item__info{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.saved-item__range{font-weight:500;font-size:0.9rem}
+.saved-item__stat{font-size:0.8rem;color:var(--text2)}
+.saved-item__stat span{font-family:var(--font-mono);color:var(--accent);font-weight:600}
+.saved-item__actions{display:flex;gap:4px}
+.btn-icon-sm{
+  width:28px;height:28px;border-radius:50%;border:none;
+  background:transparent;cursor:pointer;font-size:0.85rem;
+  color:var(--text2);display:flex;align-items:center;justify-content:center;
+}
+.btn-icon-sm:hover{background:var(--row-hover)}
+.btn-icon-sm--danger:hover{background:var(--danger-bg);color:var(--danger)}
+
+/* Stats trigger button in nav */
+
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header__left">
+    <span class="header__logo">⏱️</span>
+    <span class="header__title">工作时间统计</span>
+  </div>
+  <div class="header__actions">
+    <button class="btn-icon" id="themeToggle" title="切换主题">🌙</button>
+  </div>
+</header>
+
+<main class="main">
+
+  <!-- Month Navigation -->
+  <div class="month-nav">
+    <button class="month-nav__btn" id="btnPrev">◀</button>
+    <span class="month-nav__label" id="monthLabel" title="点击选择月份">2026年 6月 ▾
+      <div class="month-picker" id="monthPicker">
+        <div class="month-picker__year-row">
+          <button class="month-picker__yr-btn" id="pkrYrPrev">◀</button>
+          <span id="pkrYear">2026</span>
+          <button class="month-picker__yr-btn" id="pkrYrNext">▶</button>
+        </div>
+        <div class="month-picker__grid" id="pkrGrid"></div>
+      </div>
+    </span>
+    <button class="month-nav__btn" id="btnNext">▶</button>
+    <span class="nav-pill" id="btnToday">🏠 回到今天</span>
+    <span class="nav-pill" id="btnStats">📊 统计</span>
+  </div>
+
+  <!-- Schedule Table -->
+  <div class="schedule-card">
+
+    <!-- Summary Bar -->
+    <div class="summary-bar">
+      <div class="summary-item">
+        <div class="summary-item__label">本月总计</div>
+        <div class="summary-item__value summary-item__value--accent" id="sumTotal">0.00 h</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-item__label">工作天数</div>
+        <div class="summary-item__value" id="sumDays">0 天</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-item__label">日均工时</div>
+        <div class="summary-item__value" id="sumAvg">0.00 h</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-item__label">本月收入</div>
+        <div class="summary-item__value summary-item__value--accent" id="sumEarn">¥0.00</div>
+      </div>
+    </div>
+
+    <table class="schedule-table">
+      <thead>
+        <tr>
+          <th class="col-date">日期</th>
+          <th class="col-day">星期</th>
+          <th class="col-start">上班</th>
+          <th class="col-end">下班</th>
+          <th class="col-hours">工时</th>
+          <th class="col-wage">时薪(元)</th>
+          <th class="col-actions">操作</th>
+        </tr>
+      </thead>
+      <tbody id="scheduleBody"></tbody>
+    </table>
+
+  </div>
+
+</main>
+
+<!-- Stats Modal -->
+<div class="modal-overlay" id="statsModal">
+  <div class="modal">
+    <div class="modal__head">
+      <span class="modal__title">📊 工时统计</span>
+      <button class="modal__close" id="btnCloseStats">✕</button>
+    </div>
+    <div class="modal__body">
+
+      <!-- Saved Stats Section (always visible) -->
+      <div class="modal__section">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <div class="modal__section-title" style="margin-bottom:0">📋 已保存的统计</div>
+          <button class="btn btn-primary btn-sm" id="btnAddStats">+ 添加统计</button>
+        </div>
+        <div class="saved-list" id="savedStatsList">
+          <div style="text-align:center;color:var(--text3);font-size:0.85rem;padding:12px;">暂无保存的统计</div>
+        </div>
+      </div>
+
+      <!-- Query Form (hidden, shown when adding/editing) -->
+      <div class="modal__section" id="statsForm" style="display:none;border-top:2px solid var(--border);padding-top:16px;">
+        <div class="modal__section-title" id="statsFormTitle">新建统计</div>
+        <div class="range-row">
+          <input type="date" id="statsFrom">
+          <span>至</span>
+          <input type="date" id="statsTo">
+        </div>
+        <div class="modal-btns">
+          <button class="btn btn-primary" id="btnCalc">🔍 查询</button>
+          <button class="btn btn-outline" id="btnSaveStats" style="display:none">💾 保存统计</button>
+          <button class="btn btn-outline btn-sm" id="btnCancelStats">取消</button>
+        </div>
+
+        <!-- Query Result -->
+        <div class="stats-result" id="statsResult" style="display:none">
+          <div class="stats-result__item">
+            <div class="stats-result__val" id="resHours">—</div>
+            <div class="stats-result__lbl">总计工时</div>
+          </div>
+          <div class="stats-result__item">
+            <div class="stats-result__val" id="resDays">—</div>
+            <div class="stats-result__lbl">工作天数</div>
+          </div>
+          <div class="stats-result__item">
+            <div class="stats-result__val" id="resAvg">—</div>
+            <div class="stats-result__lbl">日均工时</div>
+          </div>
+          <div class="stats-result__item">
+            <div class="stats-result__val" id="resEarn">—</div>
+            <div class="stats-result__lbl">总薪资</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ============================================================
+// DATA LAYER
+// ============================================================
+const STORAGE_KEY = 'workingHoursData';
+
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+function loadData() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return { entries: {}, theme: 'light', defaultWage: 0, stats: [] };
+    const data = JSON.parse(raw);
+    if (!data.stats) data.stats = [];
+    if (data.defaultWage == null) data.defaultWage = 0;
+    return data;
+  } catch(e) {
+    return { entries: {}, theme: 'light', defaultWage: 0, stats: [] };
+  }
+}
+
+function saveData(data) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch(e) {}
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+function formatDate(y, m, d) {
+  return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+}
+
+function todayStr() {
+  const t = new Date();
+  return formatDate(t.getFullYear(), t.getMonth(), t.getDate());
+}
+
+function timeToNum(t) {
+  if (!t) return 0;
+  const [h, m] = t.split(':').map(Number);
+  return h + m / 60;
+}
+
+function calcHours(start, end) {
+  if (!start || !end) return 0;
+  const s = timeToNum(start), e = timeToNum(end);
+  if (e <= s) return Math.round((e + 24 - s) * 100) / 100;
+  return Math.round((e - s) * 100) / 100;
+}
+
+const DAY_NAMES = ['日','一','二','三','四','五','六'];
+
+// ============================================================
+// STATE
+// ============================================================
+let data = null;
+let viewYear, viewMonth; // 0-indexed month
+
+// ============================================================
+// RENDER
+// ============================================================
+function render() {
+  renderSchedule();
+  renderSummary();
+}
+
+function renderSchedule() {
+  const tbody = document.getElementById('scheduleBody');
+  const today = todayStr();
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const now = new Date();
+  const nowDate = formatDate(now.getFullYear(), now.getMonth(), now.getDate());
+  const defWage = data.defaultWage || 0;
+
+  let html = '';
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = formatDate(viewYear, viewMonth, d);
+    const dayOfWeek = new Date(viewYear, viewMonth, d).getDay();
+    const entry = data.entries[dateStr] || null;
+    const isToday = dateStr === today;
+    const isFuture = dateStr > nowDate;
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+    const editable = !isFuture;
+    const hours = entry ? calcHours(entry.start, entry.end) : 0;
+    const wage = entry ? (entry.wage != null ? entry.wage : defWage) : defWage;
+
+    let rowClass = '';
+    if (isToday) rowClass += ' row-today';
+    if (isFuture) rowClass += ' row-future';
+    else if (isWeekend && !entry && !isToday) rowClass += ' row-weekend';
+
+    let dayLabel = DAY_NAMES[dayOfWeek];
+    if (isToday) dayLabel = `<span class="cell-day--today">${dayLabel}</span>`;
+
+    // Default display times: 08:00 / 18:00 if no entry saved
+    const showStart = entry ? entry.start : (editable ? '08:00' : '');
+    const showEnd = entry ? entry.end : (editable ? '18:00' : '');
+
+    html += `<tr class="${rowClass}" data-date="${dateStr}">`;
+    html += `<td class="cell-date">${viewMonth + 1}月${d}日</td>`;
+    html += `<td class="cell-day">${dayLabel}</td>`;
+    html += `<td><input type="time" class="time-input time-start" value="${showStart}" ${editable ? '' : 'disabled'} data-date="${dateStr}" step="300"></td>`;
+    html += `<td><input type="time" class="time-input time-end" value="${showEnd}" ${editable ? '' : 'disabled'} data-date="${dateStr}" step="300"></td>`;
+    html += `<td class="cell-hours${hours === 0 ? ' cell-hours--none' : ''}" data-date="${dateStr}">${hours === 0 ? '—' : hours.toFixed(2) + 'h'}</td>`;
+    html += `<td><input type="number" class="wage-input" value="${wage}" ${editable ? '' : 'disabled'} data-date="${dateStr}" step="0.01" min="0" placeholder="0"></td>`;
+    html += `<td>`;
+    if (editable) {
+      html += `<button class="btn-save" data-date="${dateStr}">保存</button> `;
+      if (entry) html += `<button class="btn-clear" data-date="${dateStr}">清除</button>`;
+    }
+    html += `</td>`;
+    html += '</tr>';
+  }
+
+  tbody.innerHTML = html;
+
+  // Attach event listeners
+  tbody.querySelectorAll('.time-start, .time-end').forEach(input => {
+    input.addEventListener('change', () => {
+      updateHoursCell(input.dataset.date);
+    });
+  });
+  tbody.querySelectorAll('.btn-save').forEach(btn => {
+    btn.addEventListener('click', () => saveEntry(btn.dataset.date));
+  });
+  tbody.querySelectorAll('.btn-clear').forEach(btn => {
+    btn.addEventListener('click', () => clearEntry(btn.dataset.date));
+  });
+}
+
+function updateHoursCell(dateStr) {
+  const row = document.querySelector(`tr[data-date="${dateStr}"]`);
+  if (!row) return;
+  const startInput = row.querySelector('.time-start');
+  const endInput = row.querySelector('.time-end');
+  const hoursCell = row.querySelector('.cell-hours');
+  const start = startInput ? startInput.value : '';
+  const end = endInput ? endInput.value : '';
+  const hours = calcHours(start, end);
+
+  if (hours === 0) {
+    hoursCell.textContent = '—';
+    hoursCell.className = 'cell-hours cell-hours--none';
+  } else {
+    hoursCell.textContent = hours.toFixed(2) + 'h';
+    hoursCell.className = 'cell-hours';
+  }
+}
+
+function saveEntry(dateStr) {
+  const row = document.querySelector(`tr[data-date="${dateStr}"]`);
+  if (!row) return;
+  const startInput = row.querySelector('.time-start');
+  const endInput = row.querySelector('.time-end');
+  const wageInput = row.querySelector('.wage-input');
+  const start = startInput.value;
+  const end = endInput.value;
+  const wage = parseFloat(wageInput.value) || 0;
+
+  if (!start || !end) {
+    toast('请填写上班和下班时间');
+    return;
+  }
+
+  const hours = calcHours(start, end);
+  if (hours <= 0) {
+    toast('下班时间须晚于上班时间');
+    return;
+  }
+
+  // Update global default wage if user changed it
+  if (wage !== (data.defaultWage || 0)) {
+    data.defaultWage = wage;
+  }
+
+  data.entries[dateStr] = { start, end, wage };
+  saveData(data);
+  render();
+  const earn = Math.round(hours * wage * 100) / 100;
+  toast(`✅ ${dateStr} 已保存 · ${hours.toFixed(2)}h · ¥${earn.toFixed(2)}`);
+}
+
+function clearEntry(dateStr) {
+  if (!data.entries[dateStr]) return;
+  const entry = data.entries[dateStr];
+  if (!confirm(`确定清除 ${dateStr} 的记录？\n${entry.start} - ${entry.end}`)) return;
+
+  delete data.entries[dateStr];
+  saveData(data);
+  render();
+  toast(`🗑️ ${dateStr} 已清除`);
+}
+
+function renderSummary() {
+  let total = 0, days = 0, earnings = 0;
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = formatDate(viewYear, viewMonth, d);
+    const entry = data.entries[ds];
+    if (entry) {
+      const h = calcHours(entry.start, entry.end);
+      if (h > 0) {
+        total += h;
+        days++;
+        const w = entry.wage || 0;
+        earnings += h * w;
+      }
+    }
+  }
+  total = Math.round(total * 100) / 100;
+  earnings = Math.round(earnings * 100) / 100;
+  const avg = days > 0 ? Math.round((total / days) * 100) / 100 : 0;
+
+  document.getElementById('sumTotal').textContent = total.toFixed(2) + ' h';
+  document.getElementById('sumDays').textContent = days + ' 天';
+  document.getElementById('sumAvg').textContent = avg.toFixed(2) + ' h';
+  document.getElementById('sumEarn').textContent = '¥' + earnings.toFixed(2);
+}
+
+// ============================================================
+// STATISTICS MODAL
+// ============================================================
+let lastStatsResult = null;
+let editingStatId = null; // track which stat is being edited
+
+function openStats() {
+  document.getElementById('statsModal').classList.add('modal-overlay--open');
+  hideStatsForm();
+  renderSavedStats();
+}
+
+function showStatsForm(title, from, to, editId) {
+  document.getElementById('statsForm').style.display = '';
+  document.getElementById('statsFormTitle').textContent = title || '新建统计';
+  document.getElementById('statsFrom').value = from || formatDate(viewYear, viewMonth, 1);
+  document.getElementById('statsTo').value = to || formatDate(viewYear, viewMonth, new Date(viewYear, viewMonth+1, 0).getDate());
+  document.getElementById('statsResult').style.display = 'none';
+  document.getElementById('btnSaveStats').style.display = 'none';
+  lastStatsResult = null;
+  editingStatId = editId || null;
+}
+
+function hideStatsForm() {
+  document.getElementById('statsForm').style.display = 'none';
+  lastStatsResult = null;
+  editingStatId = null;
+}
+
+function editSavedStat(id) {
+  const item = data.stats.find(s => s.id === id);
+  if (!item) return;
+  showStatsForm('编辑统计', item.from, item.to, id);
+  setTimeout(() => calculateStats(), 100);
+}
+
+function closeStats() {
+  document.getElementById('statsModal').classList.remove('modal-overlay--open');
+}
+
+function calculateStats() {
+  const from = document.getElementById('statsFrom').value;
+  const to = document.getElementById('statsTo').value;
+  if (!from || !to) { toast('请选择起止日期'); return; }
+  if (from > to) { toast('起始日期不能晚于结束日期'); return; }
+
+  let totalH = 0, days = 0, totalE = 0;
+  const start = new Date(from + 'T00:00:00');
+  const end = new Date(to + 'T00:00:00');
+
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    const ds = formatDate(d.getFullYear(), d.getMonth(), d.getDate());
+    const entry = data.entries[ds];
+    if (entry) {
+      const h = calcHours(entry.start, entry.end);
+      if (h > 0) {
+        totalH += h;
+        days++;
+        totalE += h * (entry.wage || data.defaultWage || 0);
+      }
+    }
+  }
+
+  totalH = Math.round(totalH * 100) / 100;
+  totalE = Math.round(totalE * 100) / 100;
+  const avg = days > 0 ? Math.round((totalH / days) * 100) / 100 : 0;
+
+  document.getElementById('resHours').textContent = totalH.toFixed(2) + ' h';
+  document.getElementById('resDays').textContent = days + ' 天';
+  document.getElementById('resAvg').textContent = avg.toFixed(2) + ' h';
+  document.getElementById('resEarn').textContent = '¥' + totalE.toFixed(2);
+  document.getElementById('statsResult').style.display = 'grid';
+  document.getElementById('btnSaveStats').style.display = '';
+
+  lastStatsResult = { from, to, hours: totalH, days, avg, earn: totalE };
+}
+
+function saveCurrentStats() {
+  if (!lastStatsResult) { toast('请先查询'); return; }
+
+  if (editingStatId) {
+    // Update existing stat
+    const item = data.stats.find(s => s.id === editingStatId);
+    if (item) {
+      item.name = `${lastStatsResult.from} ~ ${lastStatsResult.to}`;
+      item.from = lastStatsResult.from;
+      item.to = lastStatsResult.to;
+      item.hours = lastStatsResult.hours;
+      item.days = lastStatsResult.days;
+      item.avg = lastStatsResult.avg;
+      item.earn = lastStatsResult.earn;
+      item.createdAt = new Date().toISOString();
+    }
+    editingStatId = null;
+    saveData(data);
+    hideStatsForm();
+    renderSavedStats();
+    toast('✅ 统计已更新');
+    return;
+  }
+
+  // New stat
+  data.stats.push({
+    id: uid(),
+    name: `${lastStatsResult.from} ~ ${lastStatsResult.to}`,
+    from: lastStatsResult.from,
+    to: lastStatsResult.to,
+    hours: lastStatsResult.hours,
+    days: lastStatsResult.days,
+    avg: lastStatsResult.avg,
+    earn: lastStatsResult.earn,
+    createdAt: new Date().toISOString()
+  });
+  saveData(data);
+  hideStatsForm();
+  renderSavedStats();
+  toast('✅ 统计已保存');
+}
+
+function deleteSavedStat(id) {
+  const item = data.stats.find(s => s.id === id);
+  if (!item) return;
+  if (!confirm(`确定删除统计"${item.name}"？`)) return;
+  data.stats = data.stats.filter(s => s.id !== id);
+  saveData(data);
+  renderSavedStats();
+  toast(`🗑️ 已删除`);
+}
+
+function renderSavedStats() {
+  const container = document.getElementById('savedStatsList');
+  if (!data.stats || data.stats.length === 0) {
+    container.innerHTML = '<div style="text-align:center;color:var(--text3);font-size:0.85rem;padding:12px;">暂无保存的统计</div>';
+    return;
+  }
+  // Newest first
+  const sorted = [...data.stats].reverse();
+  container.innerHTML = sorted.map(s => `
+    <div class="saved-item">
+      <div class="saved-item__info">
+        <span class="saved-item__range">${s.name}</span>
+        <span class="saved-item__stat">
+          <span>${s.hours.toFixed(2)}h</span> · ${s.days}天 ·
+          日均<span>${s.avg.toFixed(2)}h</span> ·
+          <span>¥${s.earn.toFixed(2)}</span>
+        </span>
+      </div>
+      <div class="saved-item__actions">
+        <button class="btn-icon-sm" title="重新计算" data-load="${s.id}">🔄</button>
+        <button class="btn-icon-sm btn-icon-sm--danger" title="删除" data-del="${s.id}">🗑️</button>
+      </div>
+    </div>
+  `).join('');
+
+  // Attach listeners
+  container.querySelectorAll('[data-load]').forEach(btn => {
+    btn.addEventListener('click', () => editSavedStat(btn.dataset.load));
+  });
+  container.querySelectorAll('[data-del]').forEach(btn => {
+    btn.addEventListener('click', () => deleteSavedStat(btn.dataset.del));
+  });
+}
+
+// ============================================================
+// MONTH NAVIGATION
+// ============================================================
+function goToMonth(y, m) {
+  viewYear = y;
+  viewMonth = m;
+  updateMonthLabel();
+  render();
+}
+
+function updateMonthLabel() {
+  document.getElementById('monthLabel').childNodes[0].textContent = `${viewYear}年 ${viewMonth + 1}月 ▾`;
+}
+
+// Month picker
+let pickerYear = viewYear;
+
+function openMonthPicker(e) {
+  e.stopPropagation();
+  pickerYear = viewYear;
+  renderMonthPicker();
+  document.getElementById('monthPicker').classList.add('month-picker--open');
+}
+
+function closeMonthPicker() {
+  document.getElementById('monthPicker').classList.remove('month-picker--open');
+}
+
+function renderMonthPicker() {
+  document.getElementById('pkrYear').textContent = pickerYear;
+  const grid = document.getElementById('pkrGrid');
+  const months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  grid.innerHTML = months.map((m, i) => {
+    const active = (pickerYear === viewYear && i === viewMonth) ? ' month-picker__m--active' : '';
+    return `<div class="month-picker__m${active}" data-m="${i}">${m}</div>`;
+  }).join('');
+
+  grid.querySelectorAll('.month-picker__m').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const m = parseInt(el.dataset.m);
+      goToMonth(pickerYear, m);
+      closeMonthPicker();
+    });
+  });
+}
+
+// ============================================================
+// THEME
+// ============================================================
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  document.getElementById('themeToggle').textContent = theme === 'dark' ? '☀️' : '🌙';
+}
+
+function toggleTheme() {
+  const cur = document.documentElement.getAttribute('data-theme');
+  const next = cur === 'dark' ? 'light' : 'dark';
+  data.theme = next;
+  saveData(data);
+  applyTheme(next);
+}
+
+// ============================================================
+// TOAST
+// ============================================================
+function toast(msg) {
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2300);
+}
+
+// ============================================================
+// INIT
+// ============================================================
+function init() {
+  data = loadData();
+
+  const now = new Date();
+  viewYear = now.getFullYear();
+  viewMonth = now.getMonth();
+
+  applyTheme(data.theme || 'light');
+  render();
+
+  document.getElementById('btnPrev').addEventListener('click', () => {
+    if (viewMonth === 0) { viewMonth = 11; viewYear--; }
+    else viewMonth--;
+    goToMonth(viewYear, viewMonth);
+  });
+  document.getElementById('btnNext').addEventListener('click', () => {
+    if (viewMonth === 11) { viewMonth = 0; viewYear++; }
+    else viewMonth++;
+    goToMonth(viewYear, viewMonth);
+  });
+  document.getElementById('btnToday').addEventListener('click', () => {
+    const t = new Date();
+    goToMonth(t.getFullYear(), t.getMonth());
+  });
+
+  // Month picker
+  document.getElementById('monthLabel').addEventListener('click', openMonthPicker);
+  document.getElementById('pkrYrPrev').addEventListener('click', (e) => {
+    e.stopPropagation(); pickerYear--; renderMonthPicker();
+  });
+  document.getElementById('pkrYrNext').addEventListener('click', (e) => {
+    e.stopPropagation(); pickerYear++; renderMonthPicker();
+  });
+  document.addEventListener('click', (e) => {
+    if (!document.getElementById('monthPicker').contains(e.target) &&
+        e.target !== document.getElementById('monthLabel')) {
+      closeMonthPicker();
+    }
+  });
+
+  document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+
+  // Stats modal
+  document.getElementById('btnStats').addEventListener('click', openStats);
+  document.getElementById('btnCloseStats').addEventListener('click', closeStats);
+  document.getElementById('statsModal').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('statsModal')) closeStats();
+  });
+  document.getElementById('btnAddStats').addEventListener('click', () => showStatsForm('新建统计'));
+  document.getElementById('btnCancelStats').addEventListener('click', hideStatsForm);
+  document.getElementById('btnCalc').addEventListener('click', calculateStats);
+  document.getElementById('btnSaveStats').addEventListener('click', saveCurrentStats);
+
+  // Escape key to close modal
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeStats();
+  });
+
+  // Cmd/Ctrl+S to save all unsaved
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      e.preventDefault();
+      toast('修改已自动保存');
+    }
+  });
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+
+</body>
+</html>

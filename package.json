@@ -1,0 +1,60 @@
+{
+  "name": "working-hours-statistics",
+  "version": "1.0.0",
+  "description": "工作时间统计 - 记录和管理每日工作时长",
+  "main": "main.js",
+  "author": "Working Hours Stats",
+  "license": "MIT",
+  "scripts": {
+    "start": "node start.js",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^8.4.0",
+    "@capacitor/cli": "^8.4.0",
+    "@capacitor/core": "^8.4.0",
+    "cross-env": "^10.1.0",
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.workhours.stats",
+    "productName": "工作时间统计",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "src/**/*",
+      "assets/**/*"
+    ],
+    "win": {
+      "target": [
+        "dir",
+        "portable"
+      ],
+      "icon": "assets/icon.ico",
+      "signAndEditExecutable": false,
+      "signDlls": false
+    },
+    "npmRebuild": false,
+    "forceCodeSigning": false,
+    "electronDist": "node_modules/electron/dist",
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "工作时间统计",
+      "installerLanguages": [
+        "zh_CN",
+        "en_US"
+      ]
+    },
+    "portable": {
+      "artifactName": "工作时间统计_${version}_便携版.exe"
+    }
+  }
+}
