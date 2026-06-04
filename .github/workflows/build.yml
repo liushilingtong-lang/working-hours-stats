@@ -71,19 +71,16 @@ jobs:
 
       - name: Generate Android icons
         run: |
-          python3 -c "
-          from PIL import Image
-          import os
-          src = 'assets/icon.png'
-          res = 'android/app/src/main/res'
-          img = Image.open(src)
-          sizes = {'mdpi':48,'hdpi':72,'xhdpi':96,'xxhdpi':144,'xxxhdpi':192}
-          for name,size in sizes.items():
-              d = f'{res}/mipmap-{name}'
-              os.makedirs(d, exist_ok=True)
-              img.resize((size,size), Image.LANCZOS).save(f'{d}/ic_launcher.png')
-              print(f'Created mipmap-{name} ({size}x{size})')
-          "
+          sudo apt-get update -qq && sudo apt-get install -y -qq imagemagick
+          SRC="assets/icon.png"
+          RES="android/app/src/main/res"
+          for PAIR in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do
+            NAME="${PAIR%%:*}" SIZE="${PAIR##*:}"
+            DIR="$RES/mipmap-$NAME"
+            mkdir -p "$DIR"
+            convert "$SRC" -resize "${SIZE}x${SIZE}" "$DIR/ic_launcher.png"
+            echo "mipmap-$NAME ($SIZE x $SIZE)"
+          done
 
       - name: Build APK
         working-directory: android
